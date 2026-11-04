@@ -16,9 +16,10 @@ jobs:
     name: Build & push image (GHCR)
     runs-on: ubuntu-26.04
     if: >
-      github.event_name == 'workflow_dispatch' ||
+      (vars.CI_ENABLED != 'false' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.conclusion == 'success')
+      github.event.workflow_run.conclusion == 'success'))
     env:
       IMAGE: ghcr.io/${{ github.repository }}
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

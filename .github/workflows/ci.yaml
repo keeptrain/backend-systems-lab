@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "**/.gitignore"
+      - "**/.dockerignore"
   pull_request:
   workflow_dispatch:
 
@@ -13,6 +17,7 @@ jobs:
   build:
     name: Build & smoke test
     runs-on: ubuntu-26.04
+    if: ${{ vars.CI_ENABLED != 'false' || github.event_name == 'workflow_dispatch' }}
     defaults:
       run:
         working-directory: app

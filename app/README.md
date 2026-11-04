@@ -65,3 +65,23 @@ GitHub Actions configuration (not app runtime variables):
 
 If `RAILWAY_TOKEN` or `RAILWAY_SERVICE` is missing, the redeploy step is
 skipped and the image is still pushed to GHCR.
+
+### Skipping CI
+
+There are three ways to avoid running the workflows:
+
+1. **Pause everything** — set the repository variable `CI_ENABLED` to `false`
+   (Settings → Secrets and variables → Actions → Variables). Both CI and Docker
+   jobs are skipped. Delete the variable or set it to `true` to resume. Manual
+   `workflow_dispatch` runs still execute.
+2. **One push only** — add `[skip ci]` to the commit message, e.g.
+   `git commit -m "docs: fix typo [skip ci]"`.
+3. **Docs-only changes** — pushes that only touch `**.md`, `.gitignore`, or
+   `.dockerignore` do not trigger CI at all.
+
+The same flag can be set from the CLI:
+
+```bash
+gh variable set CI_ENABLED --body "false"   # pause
+gh variable delete CI_ENABLED               # resume
+```
