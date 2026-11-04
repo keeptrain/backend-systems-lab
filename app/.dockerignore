@@ -1,5 +1,7 @@
 node_modules
 server
 server-linux-x64
+.env
+.env.*
 *.log
 .DS_Store
