@@ -2,6 +2,7 @@
 
 #files
 server
+server-linux-x64
 
 # dependencies
 /node_modules
