@@ -11,15 +11,15 @@ permissions:
 
 jobs:
   build:
-    name: Build & smoke test (Bun 1.4.4, linux x64)
-    runs-on: ubuntu-latest
+    name: Build & smoke test
+    runs-on: ubuntu 26
     defaults:
       run:
         working-directory: app
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun 1.4.4
         uses: oven-sh/setup-bun@v2
@@ -54,7 +54,7 @@ jobs:
           exit 1
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: server-linux-x64
           path: app/server-linux-x64
