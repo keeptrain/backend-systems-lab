@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lint
+        run: bun run lint
+
       - name: Build production binary (linux x64)
         run: bun run build:linux-x64
 

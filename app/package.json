@@ -4,12 +4,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
-    "build:linux-x64": "bun build --compile --minify-whitespace --minify-syntax --target=bun-linux-x64 --outfile server-linux-x64 src/index.ts"
+    "build:linux-x64": "bun build --compile --minify-whitespace --minify-syntax --target=bun-linux-x64 --outfile server-linux-x64 src/index.ts",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write ."
   },
   "dependencies": {
     "elysia": "latest"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.4",
     "bun-types": "latest"
   },
   "module": "src/index.js"
