@@ -1,29 +1,25 @@
 # Rate Limit Layer 1
 
-In-memory device ID rate limiter. First line of defense before any request hits
-the route. Written because not every abuse problem needs Redis.
+Rate limiter berbasis device ID di memori. Pertahanan awal sebelum request mencapai route. Ditulis karena tidak semua masalah abuse butuh Redis.
 
-## What it does
+## Apa yang dilakukan
 
-Reads `x-device-id`, counts requests per device in a fixed window, and blocks
-devices that exceed the limit. Blocked devices get a `429` until the block
-expires.
+Membaca header `x-device-id`, menghitung request per device dalam satu window, dan memblokir device yang melewati batas. Device yang diblokir menerima `429` hingga waktu blokir habis.
 
-Two caches live in memory:
+Dua cache di memori:
 
-- `blockedDeviceIds` — devices currently blocked, evicted by TTL.
-- `requestCounts` — request count and window reset per device, evicted by TTL.
+- `blockedDeviceIds` — device yang sedang diblokir, dihapus otomatis lewat TTL.
+- `requestCounts` — jumlah request dan waktu reset window per device, dihapus otomatis lewat TTL.
 
-Both are capped at 100,000 entries so this layer can't grow forever.
+Kedua cache dibatasi 100.000 entri agar tidak makan memori tanpa batas.
 
-## Why device ID instead of IP
+## Kenapa device ID, bukan IP
 
-IPs are shared behind NATs, proxies, and mobile carriers. Rate limiting by IP
-punishes innocent users on the same network. Device ID is closer to a real
-client, but it's sent by the client so it can be faked. Treat this as abuse
-reduction, not a security boundary.
+IP sering dibagi banyak pengguna di kantor, kafe, dan jaringan seluler. Rate limit berdasarkan IP bisa menghukum pengguna tak bersalah di jaringan yang sama.
 
-## Usage
+Device ID lebih dekat ke identitas client, tapi dikirim oleh client sehingga bisa dipalsukan. Pakai layer ini untuk mengurangi abuse, bukan sebagai kontrol keamanan yang ketat.
+
+## Penggunaan
 
 ```ts
 import { Elysia } from "elysia";
@@ -34,7 +30,7 @@ const app = new Elysia()
   .get("/", () => "Hello Elysia");
 ```
 
-With custom options:
+Dengan opsi:
 
 ```ts
 .onRequest(
@@ -47,16 +43,14 @@ With custom options:
 )
 ```
 
-Options:
+| Opsi        | Default       |
+| ----------- | ------------- |
+| headerName  | `x-device-id` |
+| windowMs    | `60_000`      |
+| maxRequests | `60`          |
+| blockMs     | `5 * 60_000`  |
 
-| Option   | Default      |
-| -------- | ------------ |
-| headerName | `x-device-id` |
-| windowMs   | `60_000`     |
-| maxRequests | `60`        |
-| blockMs    | `5 * 60_000` |
-
-Blocked device:
+Response saat kena batas:
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -66,7 +60,7 @@ retry-after: 300
 {"error":"Too many requests","retryAfter":300}
 ```
 
-Helpers:
+Helper:
 
 ```ts
 import { blockDeviceId, isDeviceIdBlocked, unblockDeviceId } from "./middleware/rate-limit";
@@ -76,47 +70,41 @@ isDeviceIdBlocked("device-123"); // true
 unblockDeviceId("device-123");
 ```
 
-`blockDeviceId` also clears that device's request counter, so it starts fresh
-after the block ends.
+`blockDeviceId` juga menghapus counter device, jadi setelah blokir selesai device mulai hitung dari nol.
 
-## Design choices
+## Keputusan desain
 
-**`onRequest`, not `onBeforeHandle`.** Runs before routing, so blocked devices
-never reach route matching or validation.
+**`onRequest`, bukan `onBeforeHandle`.** Berjalan sebelum routing, jadi device yang diblokir tidak perlu melewati pencarian route dan validasi.
 
-**LRU cache instead of Map/object.** Hard cap on memory; least recently used
-entries evicted automatically.
+**LRU cache, bukan Map.** Memori terbatas; entri paling lama tidak dipakai dibuang otomatis.
 
-**TTL instead of cron.** No extra cleanup job needed.
+**TTL, bukan cron.** Tidak ada job tambahan untuk membersihkan blokir yang sudah kadaluarsa.
 
-**Fixed window.** Cheap and simple. Trade-off: burst at window edges.
+**Fixed window.** Murah dan sederhana. Kompromi: burst di tepi window.
 
-**Fail-open when no device ID.** Request without a header still goes through,
-so legitimate clients don't break. It also means an attacker can skip this
-layer by omitting the header — don't make this your only control.
+**Fail-open saat tidak ada device ID.** Request tanpa header tetap dilanjutkan supaya client sah tidak rusak. Efek sampingnya, penyerang bisa melewati layer ini dengan tidak mengirim header. Jangan jadikan ini satu-satunya kontrol.
 
-## Trade-offs
+## Kelebihan dan batasan
 
-Good for:
+Cocok untuk:
 
-- Single-instance apps
-- Cheap first line of defense before adding infrastructure
-- Relaxed limits acceptable
+- Aplikasi satu instance
+- Pertahanan awal yang murah sebelum menambah infrastruktur
+- Batas longgar masih bisa diterima
 
-Not good for:
+Tidak cocok untuk:
 
-- Multi-instance clusters (each process has its own counter)
-- Persistent counters after restart
-- Billing or contract quotas
-- Environments where device ID can't be trusted
+- Kluster multi-instance (tiap proses punya counter sendiri)
+- Counter yang bertahan setelah restart
+- Kuota billing atau kontrak
+- Tempat di mana device ID tidak dipercaya
 
 ## Testing
 
-Unit test calls handlers directly. Integration test runs through Elysia
-`.handle()` without listening on a port.
+Unit test memanggil handler secara langsung. Integration test melalui Elysia `.handle()` tanpa membuka port.
 
 ```bash
 bun test src/middleware/_test
 ```
 
-30 tests: 18 unit, 12 integration.
+30 test: 18 unit, 12 integration.
