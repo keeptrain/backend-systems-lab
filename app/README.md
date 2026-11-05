@@ -25,8 +25,12 @@ cp .env.example .env
 
 | Variable     | Required | Default                    | Description                                                       |
 | ------------ | -------- | -------------------------- | ----------------------------------------------------------------- |
-| `PORT`       | No       | `3000`                     | HTTP port. Railway injects this automatically at runtime.         |
-| `NODE_ENV`   | No       | `production` (Dockerfile)  | Runtime mode. Already set by the image, override only if needed.  |
+| `PORT`       | No       | `3000`                     | HTTP port, integer `1..65535`. Railway injects this automatically. |
+| `NODE_ENV`   | No       | `development`              | One of `development`, `test`, `production`. The Docker image sets `production`. |
+
+Values are validated with TypeBox when `src/constants/env.ts` is imported, before
+the server starts. An invalid value stops the process with a message naming the
+offending variable.
 
 Never commit `.env`; only `.env.example` is tracked.
 
