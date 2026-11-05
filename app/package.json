@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "elysia": "latest"
+    "elysia": "latest",
+    "lru-cache": "^11.5.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
