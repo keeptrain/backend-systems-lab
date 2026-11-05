@@ -31,6 +31,12 @@ function run(
   return handler({ request: makeRequest(deviceId, headerName) });
 }
 
+function expectRateLimited(response: Response | undefined): Response {
+  expect(response).toBeInstanceOf(Response);
+  if (!response) throw new Error("Expected a rate limit response");
+  return response;
+}
+
 afterEach(() => {
   for (const deviceId of trackedDeviceIds) unblockDeviceId(deviceId);
   trackedDeviceIds.clear();
@@ -139,7 +145,10 @@ describe("middleware/rate-limit unit test", () => {
         });
 
         expect(run(handler, deviceId, "x-custom-device-id")).toBeUndefined();
-        expect(run(handler, deviceId, "x-custom-device-id")?.status).toBe(429);
+        expect(
+          expectRateLimited(run(handler, deviceId, "x-custom-device-id"))
+            .status,
+        ).toBe(429);
       });
 
       it("should trim whitespace from the device id", () => {
@@ -147,7 +156,7 @@ describe("middleware/rate-limit unit test", () => {
         const handler = deviceIdRateLimit({ maxRequests: 1, windowMs: 10_000 });
 
         expect(run(handler, `  ${deviceId}  `)).toBeUndefined();
-        expect(run(handler, deviceId)?.status).toBe(429);
+        expect(expectRateLimited(run(handler, deviceId)).status).toBe(429);
       });
 
       it("should allow requests without a device id", () => {
@@ -166,7 +175,7 @@ describe("middleware/rate-limit unit test", () => {
         });
 
         expect(run(handler, deviceId)).toBeUndefined();
-        expect(run(handler, deviceId)?.status).toBe(429);
+        expect(expectRateLimited(run(handler, deviceId)).status).toBe(429);
         await Bun.sleep(60);
 
         expect(run(handler, deviceId)).toBeUndefined();
@@ -186,12 +195,11 @@ describe("middleware/rate-limit unit test", () => {
       expect(run(handler, deviceId)).toBeUndefined();
       expect(run(handler, deviceId)).toBeUndefined();
 
-      const response = run(handler, deviceId);
-      expect(response).toBeInstanceOf(Response);
-      expect(response?.status).toBe(429);
-      expect(response?.headers.get("content-type")).toBe("application/json");
-      expect(response?.headers.get("retry-after")).toBe("5");
-      expect(await response?.json()).toEqual({
+      const response = expectRateLimited(run(handler, deviceId));
+      expect(response.status).toBe(429);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(response.headers.get("retry-after")).toBe("5");
+      expect(await response.json()).toEqual({
         error: "Too many requests",
         retryAfter: 5,
       });
@@ -206,7 +214,7 @@ describe("middleware/rate-limit unit test", () => {
       });
 
       expect(run(handler, deviceId)).toBeUndefined();
-      expect(run(handler, deviceId)?.status).toBe(429);
+      expect(expectRateLimited(run(handler, deviceId)).status).toBe(429);
 
       expect(isDeviceIdBlocked(deviceId)).toBe(true);
     });
@@ -215,11 +223,11 @@ describe("middleware/rate-limit unit test", () => {
       const deviceId = nextDeviceId();
       blockDeviceId(deviceId, 4_500);
 
-      const response = run(deviceIdRateLimit(), deviceId);
-      const retryAfter = Number(response?.headers.get("retry-after"));
+      const response = expectRateLimited(run(deviceIdRateLimit(), deviceId));
+      const retryAfter = Number(response.headers.get("retry-after"));
 
-      expect(response?.status).toBe(429);
-      expect(response?.headers.get("content-type")).toBe("application/json");
+      expect(response.status).toBe(429);
+      expect(response.headers.get("content-type")).toBe("application/json");
       expect(retryAfter).toBeGreaterThan(0);
       expect(retryAfter).toBeLessThanOrEqual(5);
     });

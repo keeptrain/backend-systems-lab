@@ -1,15 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { Elysia } from "elysia";
+import { type AnyElysia, Elysia } from "elysia";
 import {
   blockDeviceId,
   type DeviceIdRateLimitOptions,
   deviceIdRateLimit,
   unblockDeviceId,
 } from "../rate-limit";
-
-interface TestApp {
-  handle(request: Request): Promise<Response>;
-}
 
 let deviceSequence = 0;
 const trackedDeviceIds = new Set<string>();
@@ -40,14 +36,16 @@ function createCountingApp(options: DeviceIdRateLimitOptions = {}) {
 }
 
 function request(
-  app: TestApp,
+  app: AnyElysia,
   path = "/",
   deviceId?: string,
   headerName = "x-device-id",
 ): Promise<Response> {
-  const headers = new Headers();
-  if (deviceId !== undefined) headers.set(headerName, deviceId);
-  return app.handle(new Request(`http://localhost${path}`, { headers }));
+  return app.handle(
+    new Request(`http://localhost${path}`, {
+      headers: deviceId === undefined ? undefined : { [headerName]: deviceId },
+    }),
+  );
 }
 
 afterEach(() => {
