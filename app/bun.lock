@@ -5,6 +5,7 @@
     "": {
       "name": "app",
       "dependencies": {
+        "@sinclair/typebox": "^0.34.52",
         "elysia": "latest",
         "lru-cache": "^11.5.3",
       },
