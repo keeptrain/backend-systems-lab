@@ -15,62 +15,9 @@ Kedua cache dibatasi 100.000 entri agar tidak makan memori tanpa batas.
 
 ## Kenapa device ID, bukan IP
 
-IP sering dibagi banyak pengguna di kantor, kafe, dan jaringan seluler. Rate limit berdasarkan IP bisa menghukum pengguna tak bersalah di jaringan yang sama.
+IP sering dibagi banyak pengguna di kantor, kafe, dan ISP. Rate limit berdasarkan IP bisa menghukum pengguna tak bersalah di jaringan yang sama.
 
 Device ID lebih dekat ke identitas client, tapi dikirim oleh client sehingga bisa dipalsukan. Pakai layer ini untuk mengurangi abuse, bukan sebagai kontrol keamanan yang ketat.
-
-## Penggunaan
-
-```ts
-import { Elysia } from "elysia";
-import { deviceIdRateLimit } from "./middleware/rate-limit";
-
-const app = new Elysia()
-  .onRequest(deviceIdRateLimit())
-  .get("/", () => "Hello Elysia");
-```
-
-Dengan opsi:
-
-```ts
-.onRequest(
-  deviceIdRateLimit({
-    headerName: "x-device-id",
-    windowMs: 60_000,
-    maxRequests: 120,
-    blockMs: 10 * 60_000,
-  }),
-)
-```
-
-| Opsi        | Default       |
-| ----------- | ------------- |
-| headerName  | `x-device-id` |
-| windowMs    | `60_000`      |
-| maxRequests | `60`          |
-| blockMs     | `5 * 60_000`  |
-
-Response saat kena batas:
-
-```http
-HTTP/1.1 429 Too Many Requests
-content-type: application/json
-retry-after: 300
-
-{"error":"Too many requests","retryAfter":300}
-```
-
-Helper:
-
-```ts
-import { blockDeviceId, isDeviceIdBlocked, unblockDeviceId } from "./middleware/rate-limit";
-
-blockDeviceId("device-123", 15 * 60_000);
-isDeviceIdBlocked("device-123"); // true
-unblockDeviceId("device-123");
-```
-
-`blockDeviceId` juga menghapus counter device, jadi setelah blokir selesai device mulai hitung dari nol.
 
 ## Keputusan desain
 
@@ -98,13 +45,3 @@ Tidak cocok untuk:
 - Counter yang bertahan setelah restart
 - Kuota billing atau kontrak
 - Tempat di mana device ID tidak dipercaya
-
-## Testing
-
-Unit test memanggil handler secara langsung. Integration test melalui Elysia `.handle()` tanpa membuka port.
-
-```bash
-bun test src/middleware/_test
-```
-
-30 test: 18 unit, 12 integration.
