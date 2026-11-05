@@ -11,3 +11,13 @@ const app = new Elysia()
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
 );
+
+process.on("SIGTERM", () => {
+  console.log("Server is shutting down");
+});
+
+process.once("SIGINT", async () => {
+  console.log("Server is interrupted");
+  await app.stop();
+  console.log("Server is stopped");
+});
