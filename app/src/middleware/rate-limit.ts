@@ -83,11 +83,12 @@ function tooManyRequests(retryAfterSeconds: number): Response {
 }
 
 /**
- * Elysia `onBeforeHandle` middleware that rate limits requests per device id
- * and blocks devices that exceed the limit.
+ * Elysia request middleware that rate limits requests per device id and
+ * blocks devices that exceed the limit. It can be attached with `onRequest`
+ * (recommended, runs before routing) or `onBeforeHandle`.
  *
  * @example
- * app.onBeforeHandle(deviceIdRateLimit({ maxRequests: 100 }));
+ * app.onRequest(deviceIdRateLimit({ maxRequests: 100 }));
  */
 export function deviceIdRateLimit(options: DeviceIdRateLimitOptions = {}) {
   const {
