@@ -1,157 +1,157 @@
-# Reviewing: Things to Note Before Running / Deploying
+# Review: Hal yang Perlu Diperhatikan sebelum Production
 
-This project has a few basic-but-critical behaviors you should be aware of before
-starting the server or deploying. Most of these are "gotchas" that are easy to
-overlook until you see the error.
+Proyek ini memiliki beberapa aspek fundamental yang harus dipahami sebelum
+dideploy atau digunakan di produksi. Kebanyakan adalah "pitfall" yang mudah
+terlewat sampai error muncul.
 
 ---
 
-## 1. Environment Validation Happens at Import Time
+## 1. Validasi Environment Jalankan Saat Import
 
-`src/constants/env.ts` is an **immediately invoked IIFE** that runs when the module
-is first imported (which happens before `new Elysia()` in `src/index.ts`).
+`src/constants/env.ts` adalah IIFE ( Immediately Invoked Function Expression )
+yang dieksekusi saat module di-impor — ini terjadi sebelum `new Elysia()` di
+`src/index.js`.
 
-- If any environment variable is invalid, the process **exits before the app
-  starts**. You will see a stack trace like:
+- Jika ada variable environment tidak valid, proses ** berhenti sebelum app
+  mulai**. Anda akan melihat pesan error yang menyebut variable-nya:
 
   ```text
   Invalid environment variables:
   - PORT: Expected integer to be greater or equal to 1
   ```
 
-- Valid variables are: `NODE_ENV` (`development`/`test`/`production`) and
-  `PORT` (integer `1..65535`). Any other value stops the process.
+- Variable yang valid: `NODE_ENV` (`development`/`test`/`production`) dan
+  `PORT` (integer `1..65535`). Nilai lain akan membatalkan start.
 
-- Defaults apply when the variable is empty or missing:
+- Default digunakan saat variable kosong atau tidak ada:
   - `NODE_ENV` → `development`
   - `PORT` → `3000`
 
 ---
 
-## 2. How `PORT` is Coerced (and What Fails)
+## 2. Konversi PORT (dan Apa yang Ditolak)
 
-`PORT` goes through two steps:
+`PORT` melalui dua tahap:
 
-1. `Number(port)` — converts the string to a number. Non-integer strings like
-   `"3000.5"` become `Number.NaN`, which then fails TypeBox validation.
-2. `t.Integer({ minimum: 1, maximum: 65535 })` — rejects anything outside the
-   valid port range.
+1. `Number(port)` — mengubah string menjadi number. String non-integer seperti
+   `"3000.5"` menjadi `Number.NaN`, lalu gagal validasi TypeBox.
+2. `t.Integer({ minimum: 1, maximum: 65535 }) — menolak di luar rentang
+   valid.
 
-**Rejected values** (process exits):
+**Nilai yang ditolak** (proses keluar):
 
-| Value | Reason |
+| Nilai | Alasan |
 |---|---|
-| `"abc"` | Not an integer |
-| `"0"` | Below minimum `1` |
-| `"65536"` | Above maximum `65535` |
-| `"3000.5"` | `Number("3000.5")` → `NaN`, not an integer |
-| `null` / `undefined` | Falls back to default `3000` |
+| `"abc"` | Bukan integer |
+| `"0"` | Di bawah minimum `1` |
+| `"65536"` | Di atas maksimum `65535` |
+| `"3000.5"` | `Number("3000.5")` → `NaN`, bukan integer |
+| `null` / `undefined` | Kembali ke default `3000` |
 
-**Accepted values**:
+**Nilai yang diterima**:
 
-| Value | Result |
+| Nilai | Hasil |
 |---|---|
-| `undefined` / missing | Default `3000` |
+| `undefined` / tidak ada | Default `3000` |
 | `"8080"` | `8080` (number) |
-| `3000` | `3000` (already a number) |
+| `3000` | `3000` (sudah number) |
 
 ---
 
-## 3. `NODE_ENV` is a Literal Union
+## 3. `NODE_ENV` Hanyalah Union Literal
 
-Only three values are accepted: `"development"`, `"test"`, `"production"`.
-Any other string (including `"Staging"`, `"prod"`, `""`) triggers the
-validation error `NODE_ENV: Expected union value`.
+Hanya diterima tiga nilai: `"development"`, `"test"`, `"production"`.
+String lain (termasuk `"Staging"`, `"prod"`, `""`) memicu error
+`NODE_ENV: Expected union value`.
 
-The default is `"development"` when the variable is not set or is empty.
+Default `"development"` saat variable tidak di-set atau kosong.
 
 ---
 
-## 4. Cache Capacity (Rate-Limit Layer)
+## 4. Kapasitas Cache (Layer Rate-Limiter)
 
-The rate-limiter middleware uses two LRU caches, each capped at **100,000 entries**:
+Middleware rate-limit menggunakan dua LRU cache, setiap satuan maksimal **100.000 entry**:
 
-| Cache | Purpose |
+| Cache | Tujuan |
 |---|---|
-| `blockedDeviceIds` | Devices currently blocked, evicted by TTL |
-| `requestCounts` | Request count + window reset per device, evicted by TTL |
+| `blockedDeviceIds` | Device yang sedang diblokir, dibuang lewat TTL |
+| `requestCounts` | Counter request + waktu reset per device, dibuang lewat TTL |
 
-**Memory impact** (measured on Bun 1.4.4 after GC):
+**Dampak memori** (diukur di Bun 1.4.4 setelah GC):
 
-| Entries | Heap | RSS |
+| Entri | Heap | RSS |
 |---|---|---|
 | 0 | 5.7 MB | 31 MB |
-| 100k counters | 19.4 MB | 71 MB |
+| 100k counter | 19.4 MB | 71 MB |
 | +100k blocked | 32.0 MB | 88 MB |
 
-**Rule of thumb**:
+**Aturan jari**:
 
-- Container **256 MB** RAM: 100k per cache is safe.
-- Container **128 MB** RAM: consider reducing to 25k–50k per cache, or increase
-  container memory.
-- 100k is a **memory cap**, not a security cap. More than 100k unique IDs will
-  cause LRU eviction, potentially removing blocked devices.
-
----
-
-## 5. What Stays in Memory After Startup
-
-The `ENV` constant is computed once at module import. After that:
-
-- The TypeBox schema lives only inside the IIFE and is not retained.
-- `ENV.PORT` and `ENV.NODE_ENV` are plain values (`number` and `string`).
-- No runtime validation happens after startup — if you change env vars and
-  restart, the new values will be read.
+- Container **256 MB RAM**: 100k per cache aman.
+- Container **128 MB RAM**: pertimbangkan kurangi ke 25k–50k per cache, atau
+  naikkan memory container.
+- 100k adalah **batas memori, bukan batas keamanan**. Lebih dari 100k ID unik
+  akan menyebabkan LRU mewawancarai, bisa menghapus device yang diblokir.
 
 ---
 
-## 6. Biome Config Version Mismatch
+## 5. Apa yang Tersisa di Memori Setelah Startup
 
-The repo ships with `biome.json` schema `2.6.5`, but the installed Biome CLI
-may be `2.6.4`. This is **informational only**, not an error:
+Konstant `ENV` dihitung sekali saat import module. Setelah itu:
+
+- Skema TypeBox hidup hanya di dalam IIFE dan tidak dipertahankan.
+- `ENV.PORT` dan `ENV.NODE_ENV` adalah nilai plain (`number` dan `string`).
+- Validasi tidak terjadi di runtime setelah startup — kalau mengubah env var,
+  harus merestart proses untuk mengambil nilai baru.
+
+---
+
+## 6. Mismatch Versi Biome Config
+
+Repo ini menyedia `biome.json` schema `2.6.5`, tetapi CLI Biome yang terinstal
+mungkin `2.6.4`. Ini **hanya informasi**, bukan error:
 
 ```
-i The configuration schema version does not match the CLI version 2.6.5
+i The configuration schema version does not match the CLI version 2.6.4
 ```
 
-You can ignore it, or run `bunx biome migrate` to update the file.
+Bisa diabaikan, atau jalankan `bunx biome migrate` untuk memperbarui file.
 
 ---
 
-## 7. Test Structure
+## 7. Struktur Test
 
-- Unit tests live under `src/<module>/_test/unit/`.
-- Integration tests live under `src/<module>/_test/`.
-- To run only the env tests: `bun test src/constants/_test/env.test.ts`.
-- To run middleware tests: `bun test src/middleware/_test`.
-- Full suite (currently): 30 tests (18 unit + 12 integration), all passing.
+- Unit test di `src/<module>/_test/unit/`.
+- Integration test di `src/<module>/_test/`.
+- Jalankan hanya test env: `bun test src/constants/_test/env.test.ts`.
+- Jalankan test middleware: `bun test src/middleware/_test`.
+- Full suite (saat ini): 30 test (18 unit + 12 integration), semua lulus.
 
 ---
 
-## 8. Running the App
+## 8. Menjalankan Aplikasi
 
 ```bash
-# Development (auto-reload on change)
+# Development (auto-reload saat berubah)
 bun run dev
 
-# Type-check only
+# Only type-check
 bun run typecheck
 
-# Lint only
+# Only lint
 bun run lint
 ```
 
 ---
 
-## 9. Deployment Notes
+## 9. Catatan Deployment
 
-- The app reads `.env` automatically via Bun (no `dotenv` needed).
-- `.env` itself must **never** be committed; only `.env.example` is tracked.
-- Railway injects `PORT` automatically; `NODE_ENV` defaults to `production`
-  in the Docker image.
-- If you add new env vars to the schema, remember to also update:
-  - The TypeBox schema in `src/constants/env.ts`
-  - The README table under "Environment variables"
-  - The test file if you want coverage
+- Aplikasi membaca `.env` otomatis melalui Bun (butuh `dotenv` tidak).
+- `.env` **sekalipun tidak pernah di-commit**; hanya `.env.example` yang di-track.
+- Railway inject `PORT` otomatis; `NODE_ENV` default ke `production` di image Docker.
+- Kalau menambah variable env ke schema, juga perbarui:
+  - Skema TypeBox di `src/constants/env.ts`
+  - Tabel README di bawah "Environment variables"
+  - File test jika butuh coverage
 
 ---
