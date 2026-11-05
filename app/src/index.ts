@@ -4,7 +4,7 @@ import { deviceIdRateLimit } from "./middleware/rate-limit";
 const port = Number(process.env.PORT ?? 3000);
 
 const app = new Elysia()
-  .onBeforeHandle(deviceIdRateLimit())
+  .onRequest(deviceIdRateLimit())
   .get("/", () => "Hello Elysia")
   .get('/health', () => "Hello from health endpoint")
   .listen(port);
