@@ -1,0 +1,53 @@
+{
+  "format_on_save": "on",
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/.DS_Store",
+    "**/node_modules",
+    "**/.agents/skills",
+    "..."
+  ],
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["!eslint", "!tailwindcss-language-server", "..."],
+      "formatter": [
+        {
+          "language_server": {
+            "name": "biome"
+          }
+        },
+        {
+          "code_action": "source.organizeImports.biome"
+        }
+      ]
+    },
+    "JavaScript": {
+      "language_servers": ["!eslint", "!tailwindcss-language-server", "..."],
+      "formatter": [
+        {
+          "language_server": {
+            "name": "biome"
+          }
+        },
+        {
+          "code_action": "source.organizeImports.biome"
+        }
+      ]
+    },
+    "JSON": {
+      "formatter": { "language_server": { "name": "biome" } },
+      "format_on_save": "on"
+    },
+    "JSONC": {
+      "formatter": { "language_server": { "name": "biome" } },
+      "format_on_save": "on"
+    }
+  },
+  "lsp": {
+    "biome": {
+      "settings": {
+        "require_config_file": true
+      }
+    }
+  }
+}
