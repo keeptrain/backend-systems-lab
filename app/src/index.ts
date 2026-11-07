@@ -3,7 +3,7 @@ import { ENV } from "./constants/env";
 import {
   createGracefulShutdown,
   listenForShutdownSignals,
-} from "./lifecycle/graceful-shutdown";
+} from "./lib/graceful-shutdown";
 
 app.listen({ port: ENV.PORT, hostname: "0.0.0.0" });
 

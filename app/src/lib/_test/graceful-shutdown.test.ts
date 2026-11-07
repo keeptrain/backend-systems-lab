@@ -26,7 +26,7 @@ function makeShutdown(
   return { shutdown, exits, logs, errors };
 }
 
-describe("lifecycle/graceful-shutdown unit test", () => {
+describe("graceful-shutdown unit test", () => {
   describe("success", () => {
     it("should stop the server and exit with zero", async () => {
       const { shutdown, exits, logs } = makeShutdown(async () => {});

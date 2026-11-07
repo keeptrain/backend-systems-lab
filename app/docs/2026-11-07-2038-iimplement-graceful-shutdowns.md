@@ -153,7 +153,7 @@ dan bahwa request baru diblokir segera setelah sinyal shutdown diterima.
 
 - `src/app.ts` — definisi app Elysia dan `.onStop()` untuk membersihkan state
   rate limiter.
-- `src/lifecycle/graceful-shutdown.ts` — `createGracefulShutdown()` dan
+- `src/lib/graceful-shutdown.ts` — `createGracefulShutdown()` dan
   `listenForShutdownSignals()`.
 - `src/index.ts` — listen di `0.0.0.0` dan memasang handler `SIGTERM`/`SIGINT`.
 - `src/middleware/rate-limit.ts` — `clearRateLimitState()` untuk membersihkan
