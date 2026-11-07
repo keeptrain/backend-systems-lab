@@ -38,6 +38,38 @@ secara berurutan:
 - **Keluar** — Proses berhenti dengan kode keluar nol jika berhasil, atau
   non-nol jika melebihi batas waktu dan harus dibangun paksa.
 
+## Siapa yang menunggu request in-flight
+
+Aplikasi ini **tidak menyimpan counter request manual**. Penantian request
+yang sedang berjalan ditangani oleh Bun lewat `server.stop(false)`, yang
+dipanggil oleh adapter Elysia di dalam `app.stop()`.
+
+Alurnya:
+
+```text
+SIGTERM / SIGINT
+  -> createGracefulShutdown().shutdown()
+    -> await app.stop()
+      -> Elysia Bun adapter
+        -> await server.stop(false)
+          -> Bun berhenti menerima koneksi baru
+          -> Bun menunggu request aktif selesai
+```
+
+Karena `server.stop(false)` mengembalikan Promise yang selesai setelah request
+aktif selesai, `await app.stop()` sudah cukup. Timeout di
+`createGracefulShutdown()` adalah jaring pengaman kalau ada request yang
+menggantung terlalu lama.
+
+Counter in-flight baru diperlukan kalau ingin:
+
+- mencatat jumlah request yang masih berjalan saat shutdown,
+- menolak request baru dengan `503` selama masa drain, atau
+- menampilkan metrik drain di observability.
+
+Untuk kebutuhan dasar, tidak perlu menampung atau menghitung request secara
+manual.
+
 ## Pertimbangan khusus untuk lingkungan production
 
 - Load balancer biasanya mengirim `SIGTERM` sebelum menghapus instance dari

@@ -46,6 +46,8 @@ export function createGracefulShutdown(
     }, timeoutMs);
 
     try {
+      // Elysia's Bun adapter calls server.stop(false): it stops accepting new
+      // connections and resolves after in-flight requests finish.
       await app.stop();
       clearTimeout(timeout);
       log("Server stopped, exiting");
