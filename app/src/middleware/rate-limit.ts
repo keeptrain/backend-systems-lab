@@ -66,6 +66,12 @@ export function unblockDeviceId(deviceId: string): void {
   requestCounts.delete(deviceId);
 }
 
+/** Clear every in-memory block and counter. Call this during shutdown. */
+export function clearRateLimitState(): void {
+  blockedDeviceIds.clear();
+  requestCounts.clear();
+}
+
 function tooManyRequests(retryAfterSeconds: number): Response {
   return new Response(
     JSON.stringify({

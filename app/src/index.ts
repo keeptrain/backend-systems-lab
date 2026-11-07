@@ -1,23 +1,14 @@
-import { Elysia } from "elysia";
+import { app } from "./app";
 import { ENV } from "./constants/env";
-import { deviceIdRateLimit } from "./middleware/rate-limit";
+import {
+  createGracefulShutdown,
+  listenForShutdownSignals,
+} from "./lifecycle/graceful-shutdown";
 
-const app = new Elysia()
-  .onRequest(deviceIdRateLimit())
-  .get("/", () => "Hello Elysia")
-  .get("/health", () => "Hello from health endpoint")
-  .listen(ENV.PORT);
+app.listen({ port: ENV.PORT, hostname: "0.0.0.0" });
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
 );
 
-process.on("SIGTERM", () => {
-  console.log("Server is shutting down");
-});
-
-process.once("SIGINT", async () => {
-  console.log("Server is interrupted");
-  await app.stop();
-  console.log("Server is stopped");
-});
+listenForShutdownSignals(createGracefulShutdown(app));
