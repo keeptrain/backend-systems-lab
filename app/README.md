@@ -50,6 +50,11 @@ Configure the service once:
 3. **Variables** → Railway sets `PORT` automatically; `NODE_ENV` is optional
    because the image already defaults to `production`.
 
+> **Graceful shutdown:** Railway's default draining time is **0 seconds**, so the
+> old deployment is sent `SIGTERM` and killed immediately. Set the service
+> variable `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` (for example `30`) so in-flight
+> requests can finish before the container is stopped.
+
 ## CI/CD
 
 Every push to `main` runs:

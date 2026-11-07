@@ -47,6 +47,11 @@ secara berurutan:
   period) sebelum memaksa proses berhenti dengan `SIGKILL`. Jika aplikasi
   tidak selesai dalam waktu tersebut, paksa akan digunakan dan request aktif
   akan terputus.
+- **Railway secara default memberikan draining time 0 detik.** Artinya container
+  lama langsung menerima `SIGTERM` lalu `SIGKILL` tanpa kesempatan menyelesaikan
+  request. Set service variable `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` (misalnya
+  `30`) agar graceful shutdown benar-benar berjalan. Nilai ini harus lebih besar
+  dari timeout shutdown aplikasi.
 - Setiap instance dalam deployment rolling harus dapat mati secara individu
   tanpa mengganggu traffic keseluruhan, asalkan graceful shutdown berfungsi
   dengan baik.
@@ -143,5 +148,15 @@ untuk memastikan shutdown tidak terjebak dan untuk debugging saat deploy gagal.
 Simulasikan shutdown saat terdapat request yang masih diproses. Verifikasi
 bahwa request tersebut selesai dengan respons yang benar sebelum proses keluar,
 dan bahwa request baru diblokir segera setelah sinyal shutdown diterima.
+
+## Status implementasi
+
+- `src/app.ts` — definisi app Elysia dan `.onStop()` untuk membersihkan state
+  rate limiter.
+- `src/lifecycle/graceful-shutdown.ts` — `createGracefulShutdown()` dan
+  `listenForShutdownSignals()`.
+- `src/index.ts` — listen di `0.0.0.0` dan memasang handler `SIGTERM`/`SIGINT`.
+- `src/middleware/rate-limit.ts` — `clearRateLimitState()` untuk membersihkan
+  cache saat shutdown.
 
 ---
