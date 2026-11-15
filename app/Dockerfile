@@ -3,7 +3,10 @@ FROM oven/bun:1.4.4 AS build
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+# The compiled binary resolves every import at build time, including the
+# dev-only pino-pretty transport, so the build stage needs devDependencies.
+# The runtime stage copies only the binary and ships no node_modules.
+RUN bun install --frozen-lockfile
 
 COPY tsconfig.json ./
 COPY src ./src
