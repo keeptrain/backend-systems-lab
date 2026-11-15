@@ -1,3 +1,4 @@
+import type { EventEmitter } from "node:events";
 import { lifecycleLogger } from "./logger";
 
 export interface GracefulShutdownOptions {
@@ -11,7 +12,17 @@ export interface GracefulShutdownOptions {
   error?: (message: string, cause?: unknown) => void;
 }
 
-export type Shutdown = (signal: string) => Promise<void>;
+export type Shutdown = (
+  reason: string,
+  options?: { exitCode?: number },
+) => Promise<void>;
+
+export interface FatalErrorOptions {
+  /** Reporter for fatal errors. Defaults to the lifecycle logger. */
+  fatal?: (message: string, cause: unknown) => void;
+  /** Event source, injectable for tests. Defaults to `process`. */
+  target?: Pick<EventEmitter, "on">;
+}
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -40,14 +51,17 @@ export function createGracefulShutdown(
 
   let shuttingDown = false;
 
-  return async function shutdown(signal: string): Promise<void> {
+  return async function shutdown(
+    reason: string,
+    { exitCode = 0 }: { exitCode?: number } = {},
+  ): Promise<void> {
     if (shuttingDown) {
-      log(`Received ${signal}, shutdown already in progress`);
+      log(`Shutdown already in progress, ignoring ${reason}`);
       return;
     }
 
     shuttingDown = true;
-    log(`Received ${signal}, starting graceful shutdown`);
+    log(`Starting graceful shutdown (${reason})`);
 
     const timeout = setTimeout(() => {
       error(`Graceful shutdown exceeded ${timeoutMs}ms, forcing exit`);
@@ -60,7 +74,7 @@ export function createGracefulShutdown(
       await app.stop();
       clearTimeout(timeout);
       log("Server stopped, exiting");
-      exit(0);
+      exit(exitCode);
     } catch (cause) {
       clearTimeout(timeout);
       error("Failed to stop server cleanly", cause);
@@ -73,4 +87,29 @@ export function createGracefulShutdown(
 export function listenForShutdownSignals(shutdown: Shutdown): void {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
+}
+
+/**
+ * Log fatal errors and run the same graceful shutdown, exiting with code 1.
+ * Without this, an uncaught exception or rejected promise kills the process
+ * before in-flight requests finish, and nothing reaches the log file.
+ */
+export function listenForFatalErrors(
+  shutdown: Shutdown,
+  options: FatalErrorOptions = {},
+): void {
+  const {
+    fatal = (message, cause) => lifecycleLogger.fatal({ err: cause }, message),
+    target = process,
+  } = options;
+
+  target.on("uncaughtException", (error) => {
+    fatal("Uncaught exception", error);
+    void shutdown("uncaughtException", { exitCode: 1 });
+  });
+
+  target.on("unhandledRejection", (reason) => {
+    fatal("Unhandled rejection", reason);
+    void shutdown("unhandledRejection", { exitCode: 1 });
+  });
 }

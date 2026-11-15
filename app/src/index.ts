@@ -2,6 +2,7 @@ import { app } from "./app";
 import { ENV } from "./constants/env";
 import {
   createGracefulShutdown,
+  listenForFatalErrors,
   listenForShutdownSignals,
 } from "./lib/graceful-shutdown";
 import { lifecycleLogger } from "./lib/logger";
@@ -16,4 +17,7 @@ lifecycleLogger.info(
   "Elysia server started",
 );
 
-listenForShutdownSignals(createGracefulShutdown(app));
+const shutdown = createGracefulShutdown(app);
+
+listenForShutdownSignals(shutdown);
+listenForFatalErrors(shutdown);

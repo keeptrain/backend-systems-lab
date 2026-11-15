@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { EventEmitter } from "node:events";
 import {
   createGracefulShutdown,
   type GracefulShutdownOptions,
+  listenForFatalErrors,
 } from "../graceful-shutdown";
 
 function makeShutdown(
@@ -34,8 +36,17 @@ describe("graceful-shutdown unit test", () => {
       await shutdown("SIGTERM");
 
       expect(exits).toEqual([0]);
-      expect(logs).toContain("Received SIGTERM, starting graceful shutdown");
+      expect(logs).toContain("Starting graceful shutdown (SIGTERM)");
       expect(logs).toContain("Server stopped, exiting");
+    });
+
+    it("should exit with the provided exit code", async () => {
+      const { shutdown, exits, logs } = makeShutdown(async () => {});
+
+      await shutdown("uncaughtException", { exitCode: 1 });
+
+      expect(exits).toEqual([1]);
+      expect(logs).toContain("Starting graceful shutdown (uncaughtException)");
     });
 
     it("should ignore duplicate signals", async () => {
@@ -74,6 +85,45 @@ describe("graceful-shutdown unit test", () => {
 
       expect(exits).toEqual([1]);
       expect(errors).toContain("Graceful shutdown exceeded 20ms, forcing exit");
+    });
+  });
+
+  describe("fatal errors", () => {
+    function register() {
+      const calls: { reason: string; exitCode?: number }[] = [];
+      const reports: [string, unknown][] = [];
+      const target = new EventEmitter();
+
+      listenForFatalErrors(
+        async (reason, options) => {
+          calls.push({ reason, exitCode: options?.exitCode });
+        },
+        {
+          fatal: (message, cause) => reports.push([message, cause]),
+          target,
+        },
+      );
+
+      return { calls, reports, target };
+    }
+
+    it("should log and shut down on an uncaught exception", () => {
+      const { calls, reports, target } = register();
+      const error = new Error("boom");
+
+      target.emit("uncaughtException", error);
+
+      expect(reports).toEqual([["Uncaught exception", error]]);
+      expect(calls).toEqual([{ reason: "uncaughtException", exitCode: 1 }]);
+    });
+
+    it("should log and shut down on an unhandled rejection", () => {
+      const { calls, reports, target } = register();
+
+      target.emit("unhandledRejection", "rejected");
+
+      expect(reports).toEqual([["Unhandled rejection", "rejected"]]);
+      expect(calls).toEqual([{ reason: "unhandledRejection", exitCode: 1 }]);
     });
   });
 });
