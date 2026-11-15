@@ -12,14 +12,38 @@ export const ENV = (() => {
       { default: "development" },
     ),
     PORT: t.Integer({ minimum: 1, maximum: 65535, default: 3000 }),
+    LOG_LEVEL: t.Union(
+      [
+        t.Literal("fatal"),
+        t.Literal("error"),
+        t.Literal("warn"),
+        t.Literal("info"),
+        t.Literal("debug"),
+        t.Literal("trace"),
+        t.Literal("silent"),
+      ],
+      { default: "info" },
+    ),
   });
 
   const nodeEnv = process.env.NODE_ENV?.trim();
   const port = process.env.PORT?.trim();
+  const logLevel = process.env.LOG_LEVEL?.trim();
+
+  const resolvedNodeEnv =
+    nodeEnv === undefined || nodeEnv === "" ? "development" : nodeEnv;
+  const defaultLogLevel =
+    resolvedNodeEnv === "production"
+      ? "info"
+      : resolvedNodeEnv === "test"
+        ? "silent"
+        : "debug";
 
   const value: unknown = Value.Default(schema, {
     NODE_ENV: nodeEnv === "" ? undefined : nodeEnv,
     PORT: port === undefined || port === "" ? undefined : Number(port),
+    LOG_LEVEL:
+      logLevel === undefined || logLevel === "" ? defaultLogLevel : logLevel,
   });
 
   try {

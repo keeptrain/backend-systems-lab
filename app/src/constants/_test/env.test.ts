@@ -9,6 +9,7 @@ function loadEnv(overrides: Record<string, string> = {}) {
 
   if (!("NODE_ENV" in overrides)) delete env.NODE_ENV;
   if (!("PORT" in overrides)) delete env.PORT;
+  if (!("LOG_LEVEL" in overrides)) delete env.LOG_LEVEL;
   Object.assign(env, overrides);
 
   return Bun.spawnSync({
@@ -33,6 +34,7 @@ describe("constants/env unit test", () => {
       expect(ENV.PORT).toBeGreaterThanOrEqual(1);
       expect(ENV.PORT).toBeLessThanOrEqual(65535);
       expect(typeof ENV.NODE_ENV).toBe("string");
+      expect(typeof ENV.LOG_LEVEL).toBe("string");
     });
 
     it("should apply defaults when env is empty", () => {
@@ -42,6 +44,7 @@ describe("constants/env unit test", () => {
       expect(readEnv(result.stdout)).toEqual({
         NODE_ENV: "development",
         PORT: 3000,
+        LOG_LEVEL: "debug",
       });
     });
 
@@ -52,6 +55,29 @@ describe("constants/env unit test", () => {
       expect(readEnv(result.stdout)).toEqual({
         NODE_ENV: "production",
         PORT: 8080,
+        LOG_LEVEL: "info",
+      });
+    });
+
+    it("should default log level to silent under test", () => {
+      const result = loadEnv({ NODE_ENV: "test" });
+
+      expect(result.exitCode).toBe(0);
+      expect(readEnv(result.stdout)).toEqual({
+        NODE_ENV: "test",
+        PORT: 3000,
+        LOG_LEVEL: "silent",
+      });
+    });
+
+    it("should honor an explicit log level", () => {
+      const result = loadEnv({ NODE_ENV: "production", LOG_LEVEL: "trace" });
+
+      expect(result.exitCode).toBe(0);
+      expect(readEnv(result.stdout)).toEqual({
+        NODE_ENV: "production",
+        PORT: 3000,
+        LOG_LEVEL: "trace",
       });
     });
   });
@@ -73,6 +99,15 @@ describe("constants/env unit test", () => {
         expect(result.exitCode).not.toBe(0);
         expect(result.stderr.toString()).toContain("PORT: Expected integer");
       }
+    });
+
+    it("should reject unsupported log level", () => {
+      const result = loadEnv({ LOG_LEVEL: "verbose" });
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr.toString()).toContain(
+        "LOG_LEVEL: Expected union value",
+      );
     });
   });
 });
