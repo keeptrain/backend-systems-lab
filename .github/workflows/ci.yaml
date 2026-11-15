@@ -65,7 +65,7 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
 
           for _ in $(seq 1 20); do
-            if curl -fsS http://localhost:3000/; then
+            if curl -fsS http://localhost:3000/api/health; then
               exit 0
             fi
             sleep 0.5
