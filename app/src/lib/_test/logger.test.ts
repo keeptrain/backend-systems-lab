@@ -136,5 +136,35 @@ describe("lib/logger unit test", () => {
 
       rmSync(dir, { recursive: true, force: true });
     });
+
+    it("should mirror warnings and errors to the terminal in development", () => {
+      const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
+      const logFile = join(dir, "dev.log");
+
+      const result = runLogger(
+        'logger.info("hidden-info"); logger.warn("warned"); logger.error("failed")',
+        {
+          NODE_ENV: "development",
+          LOG_LEVEL: "info",
+          LOG_FILE: logFile,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const msgs = readLines(new Uint8Array(readFileSync(logFile))).map(
+        (entry) => entry.msg,
+      );
+
+      expect(msgs).toEqual(["hidden-info", "warned", "failed"]);
+
+      const output = result.stdout.toString();
+
+      expect(output).toContain("warned");
+      expect(output).toContain("failed");
+      expect(output).not.toContain("hidden-info");
+
+      rmSync(dir, { recursive: true, force: true });
+    });
   });
 });

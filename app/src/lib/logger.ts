@@ -41,22 +41,26 @@ const options: pino.LoggerOptions = {
   },
 };
 
-/** Application logs. In development they go to the file only. */
-export const logger = pino(options, devStreams?.file);
+/** Application logs. In development they go to the file; warnings and errors
+ * are also mirrored to the terminal. */
+export const logger = pino(options, devDestination("warn"));
 
 /**
  * Lifecycle logs (startup, shutdown) also mirror to the terminal in
  * development, so it is obvious when the server is up or stopping.
  */
 export const lifecycleLogger = devStreams
-  ? pino(
-      options,
-      pino.multistream([
-        { level: "trace", stream: devStreams.terminal },
-        { level: "trace", stream: devStreams.file },
-      ]),
-    )
+  ? pino(options, devDestination("trace"))
   : logger;
+
+function devDestination(terminalLevel: pino.Level) {
+  if (!devStreams) return undefined;
+
+  return pino.multistream([
+    { level: "trace", stream: devStreams.file },
+    { level: terminalLevel, stream: devStreams.terminal },
+  ]);
+}
 
 async function createDevStreams() {
   const { default: pretty } = await import("pino-pretty");
@@ -67,7 +71,7 @@ async function createDevStreams() {
   mkdirSync(dirname(logFile), { recursive: true });
 
   return {
-    file: pino.destination({ dest: logFile, sync: false }),
+    file: pino.destination({ dest: logFile, sync: true }),
     terminal: pretty({
       colorize: Boolean(process.stdout.isTTY),
       translateTime: "SYS:HH:MM:ss.l",
