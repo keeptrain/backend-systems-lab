@@ -77,5 +77,21 @@ describe("lib/logger unit test", () => {
       expect(result.exitCode).toBe(0);
       expect(readLines(result.stdout)).toEqual([]);
     });
+
+    it("should pretty-print logs in development", () => {
+      const result = runLogger('logger.info({ port: 3000 }, "started")', {
+        NODE_ENV: "development",
+        LOG_LEVEL: "info",
+      });
+
+      expect(result.exitCode).toBe(0);
+
+      const output = result.stdout.toString();
+
+      expect(output).not.toContain('{"level"');
+      expect(output).not.toContain("\u001b[");
+      expect(output).toContain("INFO: started");
+      expect(output).toContain("port: 3000");
+    });
   });
 });
