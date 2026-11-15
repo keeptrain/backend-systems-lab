@@ -4,9 +4,7 @@ import {
   deviceIdRateLimit,
 } from "./middleware/rate-limit";
 
-const publicRoutes = new Elysia()
-  .get("/", () => "Hello Elysia")
-  .get("/health", () => "Hello from health endpoint");
+const publicRoutes = new Elysia().get("/health", () => "ok");
 
 export const app = new Elysia({
   prefix: "api",
