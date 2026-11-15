@@ -4,11 +4,16 @@ import {
   createGracefulShutdown,
   listenForShutdownSignals,
 } from "./lib/graceful-shutdown";
+import { logger } from "./lib/logger";
 
 app.listen({ port: ENV.PORT, hostname: "0.0.0.0" });
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+logger.info(
+  {
+    bindHost: app.server?.hostname,
+    port: app.server?.port,
+  },
+  "Elysia server started",
 );
 
 listenForShutdownSignals(createGracefulShutdown(app));
