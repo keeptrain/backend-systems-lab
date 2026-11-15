@@ -8,9 +8,11 @@ const publicRoutes = new Elysia()
   .get("/", () => "Hello Elysia")
   .get("/health", () => "Hello from health endpoint");
 
-export const app = new Elysia()
+export const app = new Elysia({
+  prefix: "api",
+})
   .onRequest(deviceIdRateLimit())
   .onStop(() => {
-      clearRateLimitState();
+    clearRateLimitState();
   })
   .use(publicRoutes);
