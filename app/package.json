@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.52",
-    "elysia": "latest",
+    "elysia": "1.4.32",
     "lru-cache": "^11.5.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
-    "bun-types": "latest",
+    "bun-types": "1.4.4",
     "typescript": "^7.0.2"
   },
   "module": "src/index.js"
