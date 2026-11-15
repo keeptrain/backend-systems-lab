@@ -25,8 +25,12 @@ cp .env.example .env
 
 | Variable     | Required | Default                    | Description                                                       |
 | ------------ | -------- | -------------------------- | ----------------------------------------------------------------- |
-| `PORT`       | No       | `3000`                     | HTTP port. Railway injects this automatically at runtime.         |
-| `NODE_ENV`   | No       | `production` (Dockerfile)  | Runtime mode. Already set by the image, override only if needed.  |
+| `PORT`       | No       | `3000`                     | HTTP port, integer `1..65535`. Railway injects this automatically. |
+| `NODE_ENV`   | No       | `development`              | One of `development`, `test`, `production`. The Docker image sets `production`. |
+
+Values are validated with TypeBox when `src/constants/env.ts` is imported, before
+the server starts. An invalid value stops the process with a message naming the
+offending variable.
 
 Never commit `.env`; only `.env.example` is tracked.
 
@@ -45,6 +49,11 @@ Configure the service once:
    PAT that has `read:packages`.
 3. **Variables** → Railway sets `PORT` automatically; `NODE_ENV` is optional
    because the image already defaults to `production`.
+
+> **Graceful shutdown:** Railway's default draining time is **0 seconds**, so the
+> old deployment is sent `SIGTERM` and killed immediately. Set the service
+> variable `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` (for example `30`) so in-flight
+> requests can finish before the container is stopped.
 
 ## CI/CD
 

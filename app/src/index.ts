@@ -1,12 +1,23 @@
-import { Elysia } from "elysia";
+import { app } from "./app";
+import { ENV } from "./constants/env";
+import {
+  createGracefulShutdown,
+  listenForFatalErrors,
+  listenForShutdownSignals,
+} from "./lib/graceful-shutdown";
+import { lifecycleLogger } from "./lib/logger";
 
-const port = Number(process.env.PORT ?? 3000);
+app.listen({ port: ENV.PORT, hostname: "0.0.0.0" });
 
-const app = new Elysia()
-  .get("/", () => "Hello Elysia")
-  .get('/health', () => "Hello from health endpoint")
-  .listen(port);
-
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+lifecycleLogger.info(
+  {
+    bindHost: app.server?.hostname,
+    port: app.server?.port,
+  },
+  "Elysia server started",
 );
+
+const shutdown = createGracefulShutdown(app);
+
+listenForShutdownSignals(shutdown);
+listenForFatalErrors(shutdown);
