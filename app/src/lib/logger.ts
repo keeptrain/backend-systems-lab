@@ -1,16 +1,21 @@
+import { mkdirSync } from "node:fs";
 import { hostname } from "node:os";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import pino from "pino";
 import { ENV } from "../constants/env";
 
 const isDevelopment = ENV.NODE_ENV === "development";
 
 /**
- * In development, logs are piped through `pino-pretty` so they stay readable
- * in the terminal. pino-pretty is loaded with a dynamic import so production
- * runs (where it is not installed) never resolve the module. `pino.transport`
- * is avoided because it relies on worker threads, which fail under Bun.
+ * In development logs are appended to `logs/dev.log` as JSON lines, so the
+ * terminal stays clean while every entry remains searchable. Production keeps
+ * writing to stdout because containers collect it there.
+ *
+ * `pino.transport` is avoided because it relies on worker threads, which fail
+ * under Bun.
  */
-const destination = isDevelopment ? await createPrettyDestination() : undefined;
+const destination = isDevelopment ? createFileDestination() : undefined;
 
 export const logger = pino(
   {
@@ -39,12 +44,12 @@ export const logger = pino(
   destination,
 );
 
-async function createPrettyDestination() {
-  const { default: pretty } = await import("pino-pretty");
+function createFileDestination() {
+  const logFile =
+    ENV.LOG_FILE ??
+    fileURLToPath(new URL("../../logs/dev.log", import.meta.url));
 
-  return pretty({
-    colorize: Boolean(process.stdout.isTTY),
-    translateTime: "SYS:HH:MM:ss.l",
-    ignore: "pid,hostname",
-  });
+  mkdirSync(dirname(logFile), { recursive: true });
+
+  return pino.destination({ dest: logFile, sync: false });
 }

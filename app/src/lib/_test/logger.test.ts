@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const loggerFile = fileURLToPath(new URL("../logger.ts", import.meta.url));
@@ -78,20 +81,30 @@ describe("lib/logger unit test", () => {
       expect(readLines(result.stdout)).toEqual([]);
     });
 
-    it("should pretty-print logs in development", () => {
+    it("should append JSON lines to a log file in development", () => {
+      const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
+      const logFile = join(dir, "dev.log");
+
       const result = runLogger('logger.info({ port: 3000 }, "started")', {
         NODE_ENV: "development",
         LOG_LEVEL: "info",
+        LOG_FILE: logFile,
       });
 
       expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toBe("");
 
-      const output = result.stdout.toString();
+      const [entry] = readLines(new Uint8Array(readFileSync(logFile)));
 
-      expect(output).not.toContain('{"level"');
-      expect(output).not.toContain("\u001b[");
-      expect(output).toContain("INFO: started");
-      expect(output).toContain("port: 3000");
+      expect(entry).toMatchObject({
+        level: "info",
+        env: "development",
+        service: "backend-systems-lab",
+        port: 3000,
+        msg: "started",
+      });
+
+      rmSync(dir, { recursive: true, force: true });
     });
   });
 });
