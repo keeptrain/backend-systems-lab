@@ -10,13 +10,14 @@ function runLogger(source: string, overrides: Record<string, string> = {}) {
   const env = { ...process.env } as Record<string, string | undefined>;
   delete env.NODE_ENV;
   delete env.LOG_LEVEL;
+  delete env.LOG_FILE;
   Object.assign(env, overrides);
 
   return Bun.spawnSync({
     cmd: [
       process.execPath,
       "-e",
-      `import { logger } from ${JSON.stringify(loggerFile)};${source};logger.flush?.();`,
+      `import { logger, lifecycleLogger } from ${JSON.stringify(loggerFile)};${source};logger.flush?.();lifecycleLogger.flush?.();`,
     ],
     env,
     stdout: "pipe",
@@ -103,6 +104,35 @@ describe("lib/logger unit test", () => {
         port: 3000,
         msg: "started",
       });
+
+      rmSync(dir, { recursive: true, force: true });
+    });
+
+    it("should mirror lifecycle logs to terminal and file in development", () => {
+      const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
+      const logFile = join(dir, "dev.log");
+
+      const result = runLogger(
+        'logger.info("regular"); lifecycleLogger.info({ port: 3000 }, "started")',
+        {
+          NODE_ENV: "development",
+          LOG_LEVEL: "info",
+          LOG_FILE: logFile,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const msgs = readLines(new Uint8Array(readFileSync(logFile))).map(
+        (entry) => entry.msg,
+      );
+
+      expect(msgs).toEqual(["regular", "started"]);
+
+      const output = result.stdout.toString();
+
+      expect(output).toContain("started");
+      expect(output).not.toContain("regular");
 
       rmSync(dir, { recursive: true, force: true });
     });

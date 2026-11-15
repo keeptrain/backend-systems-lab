@@ -1,4 +1,4 @@
-import { logger } from "./logger";
+import { lifecycleLogger } from "./logger";
 
 export interface GracefulShutdownOptions {
   /** Maximum time to wait for in-flight requests before forcing exit. */
@@ -27,14 +27,14 @@ export function createGracefulShutdown(
   const {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     exit = (code) => process.exit(code),
-    log = (message) => logger.info(message),
+    log = (message) => lifecycleLogger.info(message),
     error = (message, cause) => {
       if (cause === undefined) {
-        logger.error(message);
+        lifecycleLogger.error(message);
         return;
       }
 
-      logger.error({ err: cause }, message);
+      lifecycleLogger.error({ err: cause }, message);
     },
   } = options;
 
