@@ -6,11 +6,14 @@ import { fileURLToPath } from "node:url";
 
 const loggerFile = fileURLToPath(new URL("../logger.ts", import.meta.url));
 
-function runLogger(source: string, overrides: Record<string, string> = {}) {
+function runLogger(
+  source: string,
+  overrides: Record<string, string> = {},
+  cwd?: string,
+) {
   const env = { ...process.env } as Record<string, string | undefined>;
   delete env.NODE_ENV;
   delete env.LOG_LEVEL;
-  delete env.LOG_FILE;
   Object.assign(env, overrides);
 
   return Bun.spawnSync({
@@ -20,6 +23,7 @@ function runLogger(source: string, overrides: Record<string, string> = {}) {
       `import { logger, lifecycleLogger } from ${JSON.stringify(loggerFile)};${source};logger.flush?.();lifecycleLogger.flush?.();`,
     ],
     env,
+    cwd,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -84,13 +88,16 @@ describe("lib/logger unit test", () => {
 
     it("should append JSON lines to a log file in development", () => {
       const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
-      const logFile = join(dir, "dev.log");
+      const logFile = join(dir, "logs", "dev.log");
 
-      const result = runLogger('logger.info({ port: 3000 }, "started")', {
-        NODE_ENV: "development",
-        LOG_LEVEL: "info",
-        LOG_FILE: logFile,
-      });
+      const result = runLogger(
+        'logger.info({ port: 3000 }, "started")',
+        {
+          NODE_ENV: "development",
+          LOG_LEVEL: "info",
+        },
+        dir,
+      );
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout.toString()).toBe("");
@@ -110,15 +117,15 @@ describe("lib/logger unit test", () => {
 
     it("should mirror lifecycle logs to terminal and file in development", () => {
       const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
-      const logFile = join(dir, "dev.log");
+      const logFile = join(dir, "logs", "dev.log");
 
       const result = runLogger(
         'logger.info("regular"); lifecycleLogger.info({ port: 3000 }, "started")',
         {
           NODE_ENV: "development",
           LOG_LEVEL: "info",
-          LOG_FILE: logFile,
         },
+        dir,
       );
 
       expect(result.exitCode).toBe(0);
@@ -139,15 +146,15 @@ describe("lib/logger unit test", () => {
 
     it("should mirror warnings and errors to the terminal in development", () => {
       const dir = mkdtempSync(join(tmpdir(), "logger-test-"));
-      const logFile = join(dir, "dev.log");
+      const logFile = join(dir, "logs", "dev.log");
 
       const result = runLogger(
         'logger.info("hidden-info"); logger.warn("warned"); logger.error("failed")',
         {
           NODE_ENV: "development",
           LOG_LEVEL: "info",
-          LOG_FILE: logFile,
         },
+        dir,
       );
 
       expect(result.exitCode).toBe(0);

@@ -24,13 +24,11 @@ export const ENV = (() => {
       ],
       { default: "info" },
     ),
-    LOG_FILE: t.Optional(t.String({ minLength: 1 })),
   });
 
   const nodeEnv = process.env.NODE_ENV?.trim();
   const port = process.env.PORT?.trim();
   const logLevel = process.env.LOG_LEVEL?.trim();
-  const logFile = process.env.LOG_FILE?.trim();
 
   const resolvedNodeEnv =
     nodeEnv === undefined || nodeEnv === "" ? "development" : nodeEnv;
@@ -46,7 +44,6 @@ export const ENV = (() => {
     PORT: port === undefined || port === "" ? undefined : Number(port),
     LOG_LEVEL:
       logLevel === undefined || logLevel === "" ? defaultLogLevel : logLevel,
-    LOG_FILE: logFile === undefined || logFile === "" ? undefined : logFile,
   });
 
   try {

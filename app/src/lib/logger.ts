@@ -1,7 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { hostname } from "node:os";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import pino from "pino";
 import { ENV } from "../constants/env";
 
@@ -9,8 +8,10 @@ const isDevelopment = ENV.NODE_ENV === "development";
 
 /**
  * In development logs are appended to `logs/dev.log` as JSON lines, so the
- * terminal stays clean while every entry remains searchable. Production keeps
- * writing to stdout because containers collect it there.
+ * terminal stays clean while every entry remains searchable. The path follows
+ * the working directory, so `bun run dev` from `app/` writes
+ * `app/logs/dev.log`. Production keeps writing to stdout because containers
+ * collect it there.
  *
  * `pino.transport` is avoided because it relies on worker threads, which fail
  * under Bun.
@@ -64,9 +65,7 @@ function devDestination(terminalLevel: pino.Level) {
 
 async function createDevStreams() {
   const { default: pretty } = await import("pino-pretty");
-  const logFile =
-    ENV.LOG_FILE ??
-    fileURLToPath(new URL("../../logs/dev.log", import.meta.url));
+  const logFile = join(process.cwd(), "logs", "dev.log");
 
   mkdirSync(dirname(logFile), { recursive: true });
 

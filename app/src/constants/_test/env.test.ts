@@ -10,7 +10,6 @@ function loadEnv(overrides: Record<string, string> = {}) {
   if (!("NODE_ENV" in overrides)) delete env.NODE_ENV;
   if (!("PORT" in overrides)) delete env.PORT;
   if (!("LOG_LEVEL" in overrides)) delete env.LOG_LEVEL;
-  if (!("LOG_FILE" in overrides)) delete env.LOG_FILE;
   Object.assign(env, overrides);
 
   return Bun.spawnSync({
@@ -79,18 +78,6 @@ describe("constants/env unit test", () => {
         NODE_ENV: "production",
         PORT: 3000,
         LOG_LEVEL: "trace",
-      });
-    });
-
-    it("should honor an explicit log file", () => {
-      const result = loadEnv({ LOG_FILE: "/tmp/custom-dev.log" });
-
-      expect(result.exitCode).toBe(0);
-      expect(readEnv(result.stdout)).toEqual({
-        NODE_ENV: "development",
-        PORT: 3000,
-        LOG_LEVEL: "debug",
-        LOG_FILE: "/tmp/custom-dev.log",
       });
     });
   });
